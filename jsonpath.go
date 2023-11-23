@@ -338,6 +338,12 @@ func get_key(obj interface{}, key string) (interface{}, error) {
 
 	obj = reflect.Indirect(reflect.ValueOf(obj)).Interface()
 	switch reflect.TypeOf(obj).Kind() {
+	case reflect.Struct:
+		val, exists := getFieldByTag(obj, key)
+		if !exists {
+			return nil, fmt.Errorf("key error: %s not found in struct", key)
+		}
+		return val, nil
 	case reflect.Map:
 		// if obj came from stdlib json, its highly likely to be a map[string]interface{}
 		// in which case we can save having to iterate the map keys to work out if the
@@ -721,4 +727,28 @@ func cmp_any(obj1, obj2 interface{}, op string) (bool, error) {
 	}
 
 	return false, nil
+}
+
+func getFieldByTag(obj interface{}, key string) (interface{}, bool) {
+	rv := reflect.ValueOf(obj)
+	rt := reflect.TypeOf(obj)
+	fieldNum := rt.NumField()
+	for i := 0; i < fieldNum; i++ {
+		field := rt.Field(i)
+		value := field.Name
+		switch jsonTag := field.Tag.Get("json"); jsonTag {
+		case "-":
+		case "":
+		default:
+			parts := strings.Split(jsonTag, ",")
+			if parts[0] != "" {
+				value = parts[0]
+			}
+		}
+
+		if value == key {
+			return rv.Field(i).Interface(), true
+		}
+	}
+	return nil, false
 }
