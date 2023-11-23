@@ -336,7 +336,12 @@ func get_key(obj interface{}, key string) (interface{}, error) {
 		return nil, ErrGetFromNullObj
 	}
 
-	obj = reflect.Indirect(reflect.ValueOf(obj)).Interface()
+	rv := reflect.Indirect(reflect.ValueOf(obj))
+	if !rv.IsValid() {
+		return nil, ErrGetFromNullObj
+	}
+
+	obj = rv.Interface()
 	switch reflect.TypeOf(obj).Kind() {
 	case reflect.Struct:
 		val, exists := getFieldByTag(obj, key)
